@@ -1,0 +1,1 @@
+dist/\nbuild/\n*.spec\n__pycache__/\n*.pyc\n_manifests/\n_checksums/
