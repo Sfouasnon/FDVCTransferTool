@@ -1,38 +1,60 @@
-# FDVC v2.0 — Unified RED Array Transfer Suite
-**Apple Silicon · xxhash128 · RED Hierarchy Preserved**
+# FDVC — Film Digital Vehicle Control
+### ILM · RED Array Transfer Suite · v2.0
+
+A unified on-set data management tool for large-scale RED camera arrays. Built for ILM’s 42-camera volumetric capture stage, FDVC handles the full footage pipeline — from FTP pull off live cameras, to verified local transfer, to LTC timecode extraction — through a single PySide6 GUI.
 
 ---
 
-## Files
+## Features
 
-| File | Purpose |
-|---|---|
-| `fdvc.py` | Unified launcher — start here |
-| `fdvc_core.py` | Shared: camera map, hashing, FTP utils, manifest, HTML report |
-| `fdvc_ftp.py` | Pull clips from 42-camera array → local storage |
-| `fdvc_transfer.py` | Local → network transfer with xxhash128 verification |
-| `fdvc_meta.py` | REDline LTC/timecode scraper → master CSV |
+- **FTP Pull** — targeted clip retrieval from up to 42 simultaneous RED cameras over a local network, maintaining full `CAMERA/REEL.RDM/CLIP.RDC` hierarchy
+- **Verified Transfer** — multithreaded local-to-network transfer with xxhash128 integrity verification on every file
+- **Metadata Scrape** — REDline-powered LTC timecode and FPS extraction across all R3D files, output to a master CSV
+- **HTML Report** — embedded-logo transfer manifest with per-file hash comparison, human-readable file sizes, and total data summary
+- **Mixed Media Support** — transfers RED, Blackmagic, Hyperdeck, and any other media in a single pass
+- **Apple Silicon native** — resolves xxhsum for both M-series (`/opt/homebrew`) and Intel (`/usr/local`) Macs
 
 ---
 
-## Quick Start
+## Requirements
 
 ```bash
-# Interactive menu
-python3 fdvc.py
+python3 -m pip install PySide6 xxhash pandas
+```
 
-# Direct mode
-python3 fdvc.py ftp
-python3 fdvc.py transfer
-python3 fdvc.py meta
-python3 fdvc.py all        # ftp → transfer → meta in sequence
+- **xxhsum** (optional, faster than pure-python): `brew install xxhash`
+- **REDline** (metadata tab only): ships with [REDCINE-X PRO](https://www.red.com/downloads)
+
+---
+
+## Usage
+
+```bash
+python3 fdvc_gui.py
+```
+
+Or use the compiled app in `dist/` if built via PyInstaller.
+
+### Modes
+
+| Tab | Function |
+|---|---|
+| FTP Pull | Pull specific clips or full reels from the camera array |
+| Transfer | Copy local footage to network with xxhash128 verification |
+| Metadata | Scrape LTC timecode from R3D files via REDline |
+
+### Clip input format (FTP tab)
+
+```
+G007_A083        ← specific clip: reel G007, camera A, clip 083
+ALL:007          ← all cameras, reel 007 (calibration pass)
 ```
 
 ---
 
 ## Folder Hierarchy
 
-All tools write and expect this structure — mirrors the RED card exactly:
+Mirrors the RED card structure exactly:
 
 ```
 ROOT/
@@ -41,63 +63,58 @@ ROOT/
       CLIP.RDC/
         CLIP_001.R3D
         CLIP_001.RMD
-        ...
+        CLIP_001.rtn
 ```
 
 ---
 
-## Clip Input Format (FTP mode)
+## Camera Map
 
-```
-G007_A083          ← specific clip: reel G007, camera A, clip 083
-ALL:007            ← all cameras, reel 007 (calibration pass)
-```
+42 cameras mapped across `AA–KB` to a `172.20.114.141–182` subnet. Update `CAMERAS` in `fdvc_core.py` to match your network configuration.
 
 ---
 
 ## Credentials
 
-Set env vars to avoid plaintext passwords:
+Set environment variables to avoid plaintext credentials:
 
 ```bash
-export FDVC_FTP_USER=ftp1
+export FDVC_FTP_USER=your_user
 export FDVC_FTP_PASS=your_password
 ```
 
-Or edit defaults in `fdvc_core.py`.
-
 ---
 
-## Dependencies
+## Build (macOS)
 
 ```bash
-# Required
-pip install xxhash pandas
-
-# REDline (for meta mode) — ships with REDCINE-X PRO
-# xxhsum binary (optional, faster than pure-python)
-brew install xxhash
+python3 -m pip install pyinstaller
+~/Library/Python/3.9/bin/pyinstaller --onefile --windowed --add-data “ILM_FDVC_LOGO.png:.” --add-data “swing3-94210.mp3:.” --add-data “fdvc_core.py:.” --add-data “fdvc_ftp.py:.” --add-data “fdvc_transfer.py:.” --add-data “fdvc_meta.py:.” --name “FDVCTransferTool” fdvc_gui.py
 ```
+
+Output: `dist/FDVCTransferTool`
 
 ---
 
-## Manifest
+## File Structure
 
-Every operation appends to a single `fdvc_session.csv`:
-
-```
-timestamp | stage | camera | reel | clip | file | size_bytes | src_hash | dst_hash | status | note
-```
-
-Stages: `FTP` → `Transfer` → `Meta`
-
-HTML report auto-generated after transfer stage.
+| File | Purpose |
+|---|---|
+| `fdvc_gui.py` | PySide6 interface — start here |
+| `fdvc_core.py` | Shared: camera map, hashing, FTP utils, manifest, HTML report |
+| `fdvc_ftp.py` | FTP pull from camera array |
+| `fdvc_transfer.py` | Verified local → network transfer |
+| `fdvc_meta.py` | REDline LTC/timecode scraper |
+| `fdvc.py` | CLI launcher (alternative to GUI) |
 
 ---
 
-## Notes
+## Output
 
-- Transfer skips files already at destination with matching hash
-- FTP pull verifies every downloaded file immediately
-- `ALL:007` is the intended trigger for a 12-camera calibration pass
-- xxhsum binary used if found; falls back to pure-python xxhash, then sha256
+Every session produces a `_checksums/` folder at the transfer destination containing:
+- `FDVC_Report_<PROJECT>_<TIMESTAMP>.html` — full per-file transfer report with hashes
+- `fdvc_session.csv` — raw manifest (stage, camera, reel, clip, file, size, src_hash, dst_hash, status)
+
+---
+
+*Developed for ILM volumetric capture pipeline.*
