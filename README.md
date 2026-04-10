@@ -1,7 +1,7 @@
 # FDVC — Film Digital Vehicle Control
 ### ILM · RED Array Transfer Suite · v2.0
 
-A unified on-set data management tool for large-scale RED camera arrays. Built for ILM's 42-camera volumetric capture stage, FDVC handles the full footage pipeline — from FTP pull off live cameras, to verified local transfer, to LTC timecode extraction — through a single PySide6 GUI.
+A unified on-set data management tool for large-scale RED camera arrays. Built for ILM’s 42-camera volumetric capture stage, FDVC handles the full footage pipeline — from FTP pull off live cameras, to verified local transfer, to LTC timecode extraction — through a single PySide6 GUI.
 
 ---
 
@@ -32,6 +32,12 @@ sudo apt install ffmpeg xxhash  # ffmpeg for completion sound, xxhash optional
 pip3 install PySide6 xxhash pandas pyinstaller
 ```
 > Build on the oldest Ubuntu version you need to support. A binary built on 20.04 runs on 20.04, 22.04, and 24.04. A binary built on 22.04 will not run on 20.04.
+
+**Windows**
+```powershell
+pip install PySide6 xxhash pandas pyinstaller
+```
+> No additional system dependencies required. `winsound` (built into Python) handles the completion sound natively.
 
 ---
 
@@ -97,7 +103,7 @@ export FDVC_FTP_PASS=your_password
 
 **macOS**
 ```bash
-~/Library/Python/3.9/bin/pyinstaller --onefile --windowed --add-data "ILM_FDVC_LOGO.png:." --add-data "swing3-94210.mp3:." --add-data "fdvc_core.py:." --add-data "fdvc_ftp.py:." --add-data "fdvc_transfer.py:." --add-data "fdvc_meta.py:." --name "FDVCTransferTool" fdvc_gui.py
+~/Library/Python/3.9/bin/pyinstaller --onefile --windowed --add-data “ILM_FDVC_LOGO.png:.” --add-data “swing3-94210.mp3:.” --add-data “fdvc_core.py:.” --add-data “fdvc_ftp.py:.” --add-data “fdvc_transfer.py:.” --add-data “fdvc_meta.py:.” --name “FDVCTransferTool” fdvc_gui.py
 ```
 
 **Ubuntu**
@@ -105,7 +111,12 @@ export FDVC_FTP_PASS=your_password
 pyinstaller --onefile --windowed --add-data “ILM_FDVC_LOGO.png:.” --add-data “swing3-94210.mp3:.” --add-data “fdvc_core.py:.” --add-data “fdvc_ftp.py:.” --add-data “fdvc_transfer.py:.” --add-data “fdvc_meta.py:.” --name “FDVCTransferTool” fdvc_gui.py
 ```
 
-Output: `dist/FDVCTransferTool`
+**Windows** — note `;` separator instead of `:`
+```powershell
+pyinstaller --onefile --windowed --add-data “ILM_FDVC_LOGO.png;.” --add-data “swing3-94210.mp3;.” --add-data “fdvc_core.py;.” --add-data “fdvc_ftp.py;.” --add-data “fdvc_transfer.py;.” --add-data “fdvc_meta.py;.” --name “FDVCTransferTool” fdvc_gui.py
+```
+
+Output: `dist/FDVCTransferTool` (macOS/Linux) or `dist\FDVCTransferTool.exe` (Windows)
 
 ---
 

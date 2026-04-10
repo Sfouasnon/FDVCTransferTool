@@ -69,7 +69,16 @@ def is_online(ip: str, port: int = 21, timeout: float = 2.0) -> bool:
 
 
 def ftp_connect(ip: str) -> FTP_TLS:
-    ftp = FTP_TLS(ip, timeout=10)
+    import ssl, sys as _sys
+    # Windows requires an explicit SSL context; macOS/Linux work with defaults
+    if _sys.platform == "win32":
+        ctx = ssl.create_default_context()
+        ctx.check_hostname = False
+        ctx.verify_mode = ssl.CERT_NONE
+        ftp = FTP_TLS(context=ctx)
+        ftp.connect(ip, timeout=10)
+    else:
+        ftp = FTP_TLS(ip, timeout=10)
     ftp.login(FTP_USER, FTP_PASS)
     ftp.prot_p()
     ftp.set_pasv(True)
@@ -131,11 +140,17 @@ def _print_progress(name: str, done: int, total: int):
 # ── Hashing ───────────────────────────────────────────────────────────────────
 def xxh128(path: Path) -> str:
     """
-    Use system xxhsum if available, else fall back to hashlib xxh128 via
-    pure-python xxhash (pip install xxhash).
+    xxhash128 — tries system binary first (fastest), then pure-python, then sha256.
+    Binary search order covers macOS Homebrew (Apple Silicon + Intel) and Linux.
     """
-    # Try system binary first (fastest)
-    for candidate in ("xxhsum", "/opt/homebrew/bin/xxhsum", "/usr/local/bin/xxhsum"):
+    import sys as _sys
+    binary_candidates = ["xxhsum"]
+    if _sys.platform == "darwin":
+        binary_candidates += ["/opt/homebrew/bin/xxhsum", "/usr/local/bin/xxhsum"]
+    else:
+        binary_candidates += ["/usr/bin/xxhsum", "/usr/local/bin/xxhsum"]
+
+    for candidate in binary_candidates:
         try:
             result = subprocess.run(
                 [candidate, "-H128", "--", str(path)],
@@ -274,16 +289,35 @@ def write_html_report(manifest_csv: Path, project: str, out_html: Path):
 
 # ── Completion sound ─────────────────────────────────────────────────────────
 def play_completion_sound():
-    """Play swing3 sound if present, fall back to system sound."""
+    """Play swing3 sound — cross-platform (macOS, Linux, Windows)."""
+    import sys as _sys
     candidates = [
         Path(__file__).parent / "swing3-94210.mp3",
         Path.home() / "bin" / "swing3-94210.mp3",
     ]
-    for s in candidates:
-        if s.exists():
-            subprocess.Popen(["afplay", str(s)])
-            return
-    subprocess.Popen(["afplay", "/System/Library/Sounds/Blow.aiff"])
+    sound = next((s for s in candidates if s.exists()), None)
+
+    if _sys.platform == "darwin":
+        subprocess.Popen(["afplay", str(sound)] if sound
+                         else ["afplay", "/System/Library/Sounds/Blow.aiff"])
+    elif _sys.platform == "win32":
+        if sound:
+            import winsound
+            winsound.PlaySound(str(sound), winsound.SND_FILENAME | winsound.SND_ASYNC)
+    else:  # Linux
+        if sound:
+            for player in (
+                ["ffplay", "-nodisp", "-autoexit", str(sound)],
+                ["paplay", str(sound)],
+                ["aplay", str(sound)],
+            ):
+                try:
+                    subprocess.Popen(player,
+                                     stdout=subprocess.DEVNULL,
+                                     stderr=subprocess.DEVNULL)
+                    return
+                except FileNotFoundError:
+                    continue
 
 
 # ── Human-readable size ───────────────────────────────────────────────────────
